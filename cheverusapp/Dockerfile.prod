@@ -1,0 +1,110 @@
+###########
+# BUILDER #
+###########
+
+# pull official base image
+FROM ubuntu:20.04 as builder
+
+# set work directory
+WORKDIR /usr/src/cheverusapp
+
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV PYTHON_VERSION=3.8
+ENV DEBIAN_FRONTEND=noninteractive
+
+#
+RUN apt update && \
+    apt install build-essential -y && \
+    apt install software-properties-common -y && \
+    apt install libpq-dev -y && \
+    apt install musl-dev -y && \
+    apt install postgresql -y && \
+    apt install gcc -y && \
+    apt install curl -y && \
+    apt install nano -y && \
+    apt install telnet -y && \
+    apt install pkg-config -y && \
+    apt install libxmlsec1-dev -y && \
+    apt install netcat -y && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt install python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-distutils -y && \
+    rm -rf /var/lib/apt/lists/*
+RUN ln -s /usr/bin/python${PYTHON_VERSION} /usr/bin/python
+RUN curl -s https://bootstrap.pypa.io/get-pip.py | python
+
+# lint
+RUN pip install --upgrade pip
+COPY . .
+
+# install dependencies
+COPY ./requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/cheverusapp/wheels -r requirements.txt
+
+
+#########
+# FINAL #
+#########
+
+# pull official base image
+FROM ubuntu:20.04
+
+# create directory for the app user
+RUN mkdir -p /home/cheverusapp
+
+# # create the cheverusapp user
+# RUN addgroup -S cheverusapp && adduser -S cheverusapp -G cheverusapp
+
+# create the appropriate directories
+ENV HOME=/home/cheverusapp
+ENV APP_HOME=/home/cheverusapp/web
+RUN mkdir $APP_HOME
+RUN mkdir $APP_HOME/static
+WORKDIR $APP_HOME
+
+# set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV PYTHON_VERSION=3.8
+ENV DEBIAN_FRONTEND=noninteractive
+
+#
+RUN apt update && \
+    apt install build-essential -y && \
+    apt install software-properties-common -y && \
+    apt install libpq-dev -y && \
+    apt install musl-dev -y && \
+    apt install postgresql -y && \
+    apt install gcc -y && \
+    apt install curl -y && \
+    apt install nano -y && \
+    apt install telnet -y && \
+    apt install pkg-config -y && \
+    apt install libxmlsec1-dev -y && \
+    apt install netcat -y && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt install python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-distutils -y && \
+    rm -rf /var/lib/apt/lists/*
+RUN ln -s /usr/bin/python${PYTHON_VERSION} /usr/bin/python
+RUN curl -s https://bootstrap.pypa.io/get-pip.py | python
+
+# install dependencies
+COPY --from=builder /usr/src/cheverusapp/wheels /wheels
+COPY --from=builder /usr/src/cheverusapp/requirements.txt .
+RUN pip install --no-cache /wheels/*
+
+# copy entrypoint-prod.sh
+COPY ./entrypoint.prod.sh $APP_HOME
+
+# copy project
+COPY . $APP_HOME
+
+# # chown all the files to the app user
+# RUN chown -R cheverusapp:cheverusapp $APP_HOME
+
+# # change to the app user
+# USER cheverusapp
+
+# run entrypoint.prod.sh
+ENTRYPOINT ["/home/cheverusapp/web/entrypoint.prod.sh"]

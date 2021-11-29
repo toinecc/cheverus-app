@@ -1,0 +1,4 @@
+location /static/ {
+  alias /home/cheverusapp/web/static/;
+  add_header Access-Control-Allow-Origin *;
+}

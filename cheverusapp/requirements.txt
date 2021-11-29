@@ -1,0 +1,11 @@
+Django==3.0.7
+django-cors-headers==3.5.0
+djangorestframework==3.12.1
+pytz==2020.1
+sqlparse==0.4.1
+django-webpack-loader
+python_dotenv==0.14.0
+django-tastypie==0.14.3
+gunicorn==20.0.4
+psycopg2-binary==2.8.5
+pandas==1.2.2
